@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Карточки слов</title>
+<style>
+  :root{
+    --paper: #FAF6EE;
+    --paper-edge: #EFE7D6;
+    --ink: #22314A;
+    --ink-soft: #5B6C87;
+    --fr: #B84A3E;
+    --en: #2F5E8C;
+    --line: #DDD3BC;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin:0; padding:0; height:100%;
+    background: var(--paper-edge);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink);
+    -webkit-tap-highlight-color: transparent;
+  }
+  #app { max-width: 420px; margin: 0 auto; min-height: 100vh; display:flex; flex-direction:column; }
+
+  /* Top nav */
+  .tabs { display:flex; gap:0; padding: 14px 16px 0; background: var(--paper-edge); }
+  .tab {
+    flex:1; text-align:center; padding: 10px 0; font-size: 14px;
+    color: var(--ink-soft); border-bottom: 2px solid var(--line); cursor:pointer;
+    background:none; border-top:none; border-left:none; border-right:none; font-family:inherit;
+  }
+  .tab.active { color: var(--ink); border-bottom: 2px solid var(--ink); font-weight: 600; }
+
+  .screen { display:none; flex:1; flex-direction:column; padding: 20px 16px 32px; }
+  .screen.active { display:flex; }
+
+  /* Widget / card view */
+  .counter { text-align:center; font-size: 13px; color: var(--ink-soft); margin-bottom: 14px; letter-spacing: 0.02em; }
+
+  .cardwrap { flex:1; display:flex; align-items:center; justify-content:center; perspective: 1200px; min-height: 260px; }
+  .card {
+    width: 100%; max-width: 340px; height: 220px;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    box-shadow: 0 1px 0 var(--line), 0 8px 20px rgba(34,49,74,0.08);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding: 24px; cursor:pointer; text-align:center;
+    position:relative;
+  }
+  .card .lang-tag {
+    position:absolute; top:14px; left:16px; font-size: 12px; letter-spacing:0.03em;
+  }
+  .card .lang-tag.fr { color: var(--fr); }
+  .card .lang-tag.en { color: var(--en); }
+  .word { font-family: Georgia, "Iowan Old Style", serif; font-size: 30px; line-height:1.25; word-break: break-word; }
+  .hint { margin-top: 14px; font-size: 12px; color: var(--ink-soft); }
+
+  .navrow { display:flex; align-items:center; justify-content:center; gap: 22px; margin-top: 22px; }
+  .navbtn {
+    width: 46px; height:46px; border-radius: 50%; border: 1px solid var(--line);
+    background: var(--paper); font-size: 18px; color: var(--ink); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .navbtn:active { background: var(--paper-edge); }
+  .knowbtn {
+    border: 1px solid var(--line); background: var(--paper); color: var(--ink-soft);
+    font-size: 13px; padding: 8px 14px; border-radius: 20px; cursor:pointer; font-family:inherit;
+  }
+  .knowbtn.on { color: #3E7A4E; border-color: #3E7A4E; }
+
+  .empty { text-align:center; color: var(--ink-soft); padding: 40px 20px; line-height:1.6; }
+  .empty b { color: var(--ink); }
+
+  /* Add / list screen */
+  .field-row { display:flex; gap: 10px; margin-bottom: 10px; }
+  input[type=text] {
+    flex:1; padding: 12px 12px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--paper); font-size: 15px; color: var(--ink); font-family: inherit;
+  }
+  input[type=text]:focus { outline: none; border-color: var(--ink-soft); }
+  .addbtn {
+    padding: 0 18px; border: none; border-radius: 8px; background: var(--ink); color: var(--paper);
+    font-size: 15px; cursor:pointer; font-family: inherit;
+  }
+  .addbtn:disabled { opacity: 0.4; }
+  .list { margin-top: 14px; display:flex; flex-direction:column; gap: 8px; overflow-y:auto; }
+  .row {
+    display:flex; align-items:center; justify-content:space-between; gap: 10px;
+    padding: 12px 14px; background: var(--paper); border: 1px solid var(--line); border-radius: 8px;
+  }
+  .row .pair { font-size: 14.5px; }
+  .row .pair .fr { color: var(--fr); }
+  .row .pair .en { color: var(--en); }
+  .row .sep { color: var(--ink-soft); margin: 0 6px; }
+  .delbtn { border:none; background:none; color: var(--ink-soft); font-size: 18px; cursor:pointer; line-height:1; padding: 4px; }
+  .bulk { margin-top: 16px; }
+  .bulk summary { cursor:pointer; font-size: 13px; color: var(--ink-soft); }
+  textarea {
+    width:100%; margin-top: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--paper); font-family: inherit; font-size: 14px; color: var(--ink); resize: vertical; min-height: 80px;
+  }
+  .bulk-addbtn { margin-top: 8px; padding: 9px 16px; border: none; border-radius: 8px; background: var(--ink); color: var(--paper); font-size: 14px; cursor:pointer; font-family: inherit; }
+  .status { font-size: 12px; color: var(--ink-soft); margin-top:6px; min-height: 16px; }
+  .install-tip { font-size: 12px; color: var(--ink-soft); text-align:center; padding: 10px 20px 0; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="tabs">
+    <button class="tab active" data-tab="widget">Карточки</button>
+    <button class="tab" data-tab="manage">Мои слова</button>
+  </div>
+
+  <!-- WIDGET SCREEN -->
+  <div class="screen active" id="screen-widget">
+    <div id="widget-empty" class="empty" style="display:none;">
+      Пока нет слов.<br>Перейдите во вкладку <b>«Мои слова»</b> и добавьте первую пару.
+    </div>
+    <div id="widget-content" style="display:none; flex:1; flex-direction:column;">
+      <div class="counter" id="counter"></div>
+      <div class="cardwrap">
+        <div class="card" id="card">
+          <span class="lang-tag" id="langtag"></span>
+          <div class="word" id="wordfront"></div>
+          <div class="hint">нажмите, чтобы перевести</div>
+        </div>
+      </div>
+      <div class="navrow">
+        <button class="navbtn" id="prevbtn">‹</button>
+        <button class="knowbtn" id="knowbtn">знаю</button>
+        <button class="navbtn" id="nextbtn">›</button>
+      </div>
+    </div>
+    <div class="install-tip">Совет: добавьте эту страницу на экран «Домой» из меню браузера — и карточки будут открываться как отдельное приложение-виджет.</div>
+  </div>
+
+  <!-- MANAGE SCREEN -->
+  <div class="screen" id="screen-manage">
+    <div class="field-row">
+      <input type="text" id="input-fr" placeholder="Французское слово">
+    </div>
+    <div class="field-row">
+      <input type="text" id="input-en" placeholder="Английский перевод">
+      <button class="addbtn" id="addonebtn">+</button>
+    </div>
+    <div class="status" id="add-status"></div>
+
+    <details class="bulk">
+      <summary>Загрузить список сразу</summary>
+      <textarea id="bulk-text" placeholder="По одной паре в строке, например:&#10;chat - cat&#10;maison - house&#10;bonjour - hello"></textarea>
+      <button class="bulk-addbtn" id="bulkaddbtn">Добавить список</button>
+      <div class="status" id="bulk-status"></div>
+    </details>
+
+    <div class="list" id="list"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const KEY = 'vocab-words';
+  let words = [];
+  let idx = 0;
+  let flipped = false;
+  let loaded = false;
+
+  const screens = { widget: document.getElementById('screen-widget'), manage: document.getElementById('screen-manage') };
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    Object.values(screens).forEach(s => s.classList.remove('active'));
+    screens[t.dataset.tab].classList.add('active');
+    if (t.dataset.tab === 'manage') renderList();
+  }));
+
+  async function load(){
+    try{
+      const res = await window.storage.get(KEY, false);
+      words = res && res.value ? JSON.parse(res.value) : [];
+    }catch(e){
+      words = [];
+    }
+    loaded = true;
+    if (idx >= words.length) idx = 0;
+    renderWidget();
+    renderList();
+  }
+
+  async function save(){
+    try{
+      await window.storage.set(KEY, JSON.stringify(words), false);
+    }catch(e){
+      console.error('storage save failed', e);
+    }
+  }
+
+  function renderWidget(){
+    const empty = document.getElementById('widget-empty');
+    const content = document.getElementById('widget-content');
+    if (!words.length){
+      empty.style.display = 'block';
+      content.style.display = 'none';
+      return;
+    }
+    empty.style.display = 'none';
+    content.style.display = 'flex';
+    if (idx >= words.length) idx = 0;
+    const w = words[idx];
+    document.getElementById('counter').textContent = (idx+1) + ' из ' + words.length;
+    const langtag = document.getElementById('langtag');
+    const wordEl = document.getElementById('wordfront');
+    const hint = document.querySelector('.hint');
+    if (!flipped){
+      langtag.textContent = 'FR';
+      langtag.className = 'lang-tag fr';
+      wordEl.textContent = w.fr;
+      hint.textContent = 'нажмите, чтобы перевести';
+    } else {
+      langtag.textContent = 'EN';
+      langtag.className = 'lang-tag en';
+      wordEl.textContent = w.en;
+      hint.textContent = 'нажмите, чтобы вернуться';
+    }
+    const knowbtn = document.getElementById('knowbtn');
+    knowbtn.classList.toggle('on', !!w.known);
+    knowbtn.textContent = w.known ? 'знаю ✓' : 'знаю';
+  }
+
+  document.getElementById('card').addEventListener('click', () => {
+    flipped = !flipped;
+    renderWidget();
+  });
+  document.getElementById('prevbtn').addEventListener('click', () => {
+    if (!words.length) return;
+    idx = (idx - 1 + words.length) % words.length;
+    flipped = false;
+    renderWidget();
+  });
+  document.getElementById('nextbtn').addEventListener('click', () => {
+    if (!words.length) return;
+    idx = (idx + 1) % words.length;
+    flipped = false;
+    renderWidget();
+  });
+  document.getElementById('knowbtn').addEventListener('click', () => {
+    if (!words.length) return;
+    words[idx].known = !words[idx].known;
+    save();
+    renderWidget();
+  });
+
+  function renderList(){
+    const list = document.getElementById('list');
+    list.innerHTML = '';
+    words.forEach((w, i) => {
+      const row = document.createElement('div');
+      row.className = 'row';
+      row.innerHTML = '<div class="pair"><span class="fr">' + escapeHtml(w.fr) + '</span><span class="sep">—</span><span class="en">' + escapeHtml(w.en) + '</span></div>';
+      const del = document.createElement('button');
+      del.className = 'delbtn';
+      del.textContent = '✕';
+      del.addEventListener('click', () => {
+        words.splice(i, 1);
+        if (idx >= words.length) idx = Math.max(0, words.length - 1);
+        save();
+        renderList();
+        renderWidget();
+      });
+      row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+
+  function escapeHtml(s){
+    return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  document.getElementById('addonebtn').addEventListener('click', async () => {
+    const fr = document.getElementById('input-fr').value.trim();
+    const en = document.getElementById('input-en').value.trim();
+    const status = document.getElementById('add-status');
+    if (!fr || !en){
+      status.textContent = 'Заполните оба поля.';
+      return;
+    }
+    words.push({ fr, en, known: false });
+    await save();
+    document.getElementById('input-fr').value = '';
+    document.getElementById('input-en').value = '';
+    status.textContent = 'Добавлено: ' + fr + ' — ' + en;
+    renderList();
+    renderWidget();
+  });
+
+  document.getElementById('bulkaddbtn').addEventListener('click', async () => {
+    const raw = document.getElementById('bulk-text').value;
+    const status = document.getElementById('bulk-status');
+    const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+    let added = 0, skipped = 0;
+    lines.forEach(line => {
+      const parts = line.split(/\s*[-–—:]\s*/);
+      if (parts.length >= 2 && parts[0] && parts[1]){
+        words.push({ fr: parts[0].trim(), en: parts[1].trim(), known: false });
+        added++;
+      } else {
+        skipped++;
+      }
+    });
+    if (added){
+      await save();
+      document.getElementById('bulk-text').value = '';
+      renderList();
+      renderWidget();
+    }
+    status.textContent = 'Добавлено: ' + added + (skipped ? ', пропущено (неверный формат): ' + skipped : '');
+  });
+
+  load();
+})();
+</script>
+</body>
+</html>
